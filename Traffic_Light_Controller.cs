@@ -22,15 +22,17 @@ public class TrafficLight : MonoBehaviour
             greenLight.SetActive(false);
             yield return new WaitForSeconds(10);
 
-            redLight.SetActive(false);
-            yellowLight.SetActive(false);
-            greenLight.SetActive(true);
-            yield return new WaitForSeconds(10);
+            //Luca...rosso poi prima il giallo...
 
             redLight.SetActive(false);
             yellowLight.SetActive(true);
             greenLight.SetActive(false);
-            yield return new WaitForSeconds(10);
+            yield return new WaitForSeconds(5);
+
+            redLight.SetActive(false);
+            yellowLight.SetActive(false);
+            greenLight.SetActive(true);
+            yield return new WaitForSeconds(30);
         }
     }
 }
