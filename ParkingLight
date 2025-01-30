@@ -1,0 +1,51 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class ParkingTrafficLight : MonoBehaviour
+{
+    public Material redLight;  // Materiale luce rossa (parcheggio pieno)
+    public Material greenLight; // Materiale luce verde (posti liberi)
+
+    public int maxCapacity = 10;  // Numero massimo di auto nel parcheggio
+
+    private Renderer rend;
+    private int currentCars = 0;  // Auto attualmente presenti
+
+    void Start()
+    {
+        rend = GetComponent<Renderer>();
+        UpdateLight();
+    }
+
+    void UpdateLight()
+    {
+        // Cambia colore in base al numero di auto presenti
+        if (currentCars >= maxCapacity)
+        {
+            rend.material = redLight; // Parcheggio pieno
+        }
+        else
+        {
+            rend.material = greenLight; // Posto disponibile
+        }
+    }
+
+    void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag("Car"))
+        {
+            currentCars++;
+            UpdateLight();
+        }
+    }
+
+    /*void OnTriggerExit(Collider other)
+    {
+        if (other.CompareTag("Car"))
+        {
+            currentCars = Mathf.Max(0, currentCars - 1);
+            UpdateLight();
+        }
+    }*/
+}

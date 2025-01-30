@@ -4,34 +4,39 @@ using UnityEngine;
 
 public class TrafficLight : MonoBehaviour
 {
-    public GameObject redLight;
-    public GameObject yellowLight;
-    public GameObject greenLight;
+
+// sono state cambiate le luci e non sono più light ma materiali emissivi
+
+    public Material redLight;
+    public Material yellowLight;
+    public Material greenLight;
+
+/*creiamo l'oggetto rend e settiamo inizialmente il colore rosso*/
+    private Renderer rend;
 
     void Start()
     {
+        //assegno il render prima di usarlo
+        rend = GetComponent<Renderer>();
         StartCoroutine(lightSwitch());
     }
 
-    IEnumerator lightSwitch()
+    public void SetLight(Material lightMaterial)
+    {
+        rend.material = lightMaterial;
+    }
+
+    IEnumerator LightSwitch()
     {
         while (true)
         {
-            redLight.SetActive(true);
-            yellowLight.SetActive(false);
-            greenLight.SetActive(false);
+            SetLight(redLight);
             yield return new WaitForSeconds(10);
 
-            //Luca...rosso poi prima il giallo...
-
-            redLight.SetActive(false);
-            yellowLight.SetActive(true);
-            greenLight.SetActive(false);
+            SetLight(yellowLight);
             yield return new WaitForSeconds(5);
 
-            redLight.SetActive(false);
-            yellowLight.SetActive(false);
-            greenLight.SetActive(true);
+            SetLight(greenLight);
             yield return new WaitForSeconds(30);
         }
     }
