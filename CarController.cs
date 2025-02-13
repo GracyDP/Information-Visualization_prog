@@ -1,4 +1,5 @@
-using System;
+
+/*using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -12,7 +13,7 @@ public class CarController : MonoBehaviour
         Rear
     }
 
-    [Serializable]
+    //[Serializable]
     public struct Wheel
     {
         public GameObject wheelModel;
@@ -103,5 +104,5 @@ public class CarController : MonoBehaviour
         }
     }
 } 
-
+*/
    
