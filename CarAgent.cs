@@ -3,9 +3,14 @@ using Unity.MLAgents.Actuators;
 using Unity.MLAgents.Sensors;
 using UnityEngine;
 using UnityEngine.UIElements;
+using Random.Range;
+
 
 public class carAgent : Agent
 {
+
+    private int count = UnityEngine.Random.Range(0, 2);//per far spostare l'addestramento
+
     public float speed = 10f;
     public Rigidbody carRigidbody;
     private void Start()
@@ -16,12 +21,18 @@ public class carAgent : Agent
 
     public override void OnEpisodeBegin()
     {
-        // Resetta la posizione e la velocit‡ della macchina
+        // Resetta la posizione e la velocit√† della macchina
         carRigidbody.velocity = Vector3.zero;
         carRigidbody.angularVelocity = Vector3.zero;
-        Vector3 spawnPosition = new Vector3(9.68f, -32.3f, -44.45f);  // Cambia con la tua posizione desiderata
-        Quaternion spawnRotation = Quaternion.Euler(0, 0, 0);        // Rotazione di 90 gradi sull'asse Y
+        
+        Vector3 spawnPosition;
+        Quaternion spawnRotation;
 
+        if(count%=0){
+            spawnPosition = new Vector3(9.68f, -32.3f, -44.45f);  // Cambia con la tua posizione desiderata
+            spawnRotation = Quaternion.Euler(0, 0, 0);        // Rotazione di 90 gradi sull'asse Y
+        } else{ spawnPosition = new Vector3(24.5f, -19.5f, 37f);
+                spawnRotation = Quaternion.Euler(0, 0, 0);}
         // Imposta la posizione e rotazione della macchina
         transform.SetPositionAndRotation(spawnPosition, spawnRotation);
 
@@ -32,11 +43,11 @@ public class carAgent : Agent
 
     public override void CollectObservations(VectorSensor sensor)
     {
-        // Osservazioni manuali: velocit‡ della macchina
-        sensor.AddObservation(carRigidbody.velocity.magnitude);  // Velocit‡
-        Debug.Log("ci arrivo3");
+        // Osservazioni manuali: velocitÔøΩ della macchina
+        sensor.AddObservation(carRigidbody.velocity.magnitude);  // VelocitÔøΩ
+        //Debug.Log("ci arrivo3");
 
-        // Il Ray Perception Sensor 3D aggiunger‡ automaticamente le osservazioni dei raggi
+        // Il Ray Perception Sensor 3D aggiungerÔøΩ automaticamente le osservazioni dei raggi
     }
 
     public override void OnActionReceived(ActionBuffers actions)
@@ -55,37 +66,84 @@ public class carAgent : Agent
         if (StepCount>=1000)
         {
             Debug.Log($"Step massimo raggiunto: {StepCount}. Episodio terminato.");
-            AddReward(-0.2f);  // Penalit‡ per non aver completato il compito entro il limite di step
+            AddReward(-0.2f);  // PenalitÔøΩ per non aver completato il compito entro il limite di step
             EndEpisode();       // Riavvia l'episodio
         }
 
         // Reward positivo per andare avanti
         if (forwardAmount > 0)
         {
-            AddReward(0.01f);
+            AddReward(0.5f);
         }
-        // Penalit‡ per andare indietro
+        // Penalit√† per andare indietro
         else if (forwardAmount < 0)
         {
-            AddReward(-0.01f);
-        }
+            AddReward(-0.5f);
+        }//HO AUMENTATO IL REWARD ****************************************************
     }
+
+
+    //funzione per penalizzarlo/premiarlo e gestire i rallentamenti/linea STOP
+
+        private void Riparto(){
+        if(speed>=8 && speed <=10){
+            Debug.Log("Sto ripartendo a velocit√†: "+speed);
+            AddReward(1f);
+        }    
+        if(speed<=0){
+            AddReward(-1f);
+            EndEpisode();}
+    }
+
+    //metodo per farla aspettare allo stop
+    private IEnumerator WaitforRestart()
+{
+    Debug.Log("Aspetto 5 secondi...");
+    yield return new WaitForSeconds(5f); // Aspetta 2 secondi
+    EndEpisode();
+    //Per ora aspetta la faccio ripartire poi togliamo l'end dopo che avr√† imparato
+}
+
 
     private void OnTriggerEnter(Collider other)
     {
-        Debug.Log("ci arrivo5");
+        //Debug.Log("ci arrivo5");
         // Reward positivo per aver toccato l'oggetto con tag "Reward"
-        if (other.CompareTag("reward"))
+        if (other.CompareTag("premio"))
         {
             AddReward(1f);
             EndEpisode();  // Fine episodio dopo aver toccato l'oggetto
         }
-        // Penalit‡ per aver toccato un muro
-        else if (other.CompareTag("marciapiede"))
+        // PenalitÔøΩ per aver toccato un muro
+        else if (other.CompareTag("muro"))
         {
             AddReward(-0.5f);
             EndEpisode();
         }
+
+        //se prende il cubo prima dello stop
+        if(other.CompareTag("rallenta")){
+            if(carRigidbody.velocity.magnitude < speed){ //controllo se la macchina rallenta
+                AddReward(1f);
+                Debug.Log("sto rallentando\n");
+            }    
+            else AddReward(-0.5f);
+        }
+
+        if(other.CommpareTag("stopLine")){
+            if(carRigidbody.velocity.magnitude == 0f){
+                Debug.Log("mi sono fermato\n");
+                AddReward(1f);
+                StarCouroutine(WaitforRestart())//aspetta prima di ripartire
+                //aggiungere funzione wait
+                }else {
+                    AddReward(-1f);
+                    EndEpisode();
+                }
+            if(other.ComparTag("Car"))
+                Riparto();
+        }
+    
     }
 
     public override void Heuristic(in ActionBuffers actionsOut)
