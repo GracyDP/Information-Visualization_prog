@@ -3,13 +3,13 @@ using Unity.MLAgents.Actuators;
 using Unity.MLAgents.Sensors;
 using UnityEngine;
 using UnityEngine.UIElements;
-using Random.Range;
+using UnityEngine.Random.Range;
 
 
 public class carAgent : Agent
 {
 
-    private int count = UnityEngine.Random.Range(0, 2);//per far spostare l'addestramento
+    //private int count = Random.Next(0, 2);//per far spostare l'addestramento
 
     public float speed = 10f;
     public Rigidbody carRigidbody;
@@ -28,11 +28,11 @@ public class carAgent : Agent
         Vector3 spawnPosition;
         Quaternion spawnRotation;
 
-        if(count%=0){
+        //if(count%2=0){
             spawnPosition = new Vector3(9.68f, -32.3f, -44.45f);  // Cambia con la tua posizione desiderata
             spawnRotation = Quaternion.Euler(0, 0, 0);        // Rotazione di 90 gradi sull'asse Y
-        } else{ spawnPosition = new Vector3(24.5f, -19.5f, 37f);
-                spawnRotation = Quaternion.Euler(0, 0, 0);}
+        /*} else{ spawnPosition = new Vector3(24.5f, -19.5f, 37f);
+                spawnRotation = Quaternion.Euler(0, 0, 0);}*/
         // Imposta la posizione e rotazione della macchina
         transform.SetPositionAndRotation(spawnPosition, spawnRotation);
 
@@ -85,13 +85,13 @@ public class carAgent : Agent
 
     //funzione per penalizzarlo/premiarlo e gestire i rallentamenti/linea STOP
 
-        private void Riparto(){
+        private void Riparto(){ //
         if(speed>=8 && speed <=10){
             Debug.Log("Sto ripartendo a velocità: "+speed);
             AddReward(1f);
         }    
         if(speed<=0){
-            AddReward(-1f);
+            AddReward(-1f);//kill
             EndEpisode();}
     }
 
@@ -127,7 +127,18 @@ public class carAgent : Agent
                 AddReward(1f);
                 Debug.Log("sto rallentando\n");
             }    
-            else AddReward(-0.5f);
+            else AddReward(-0.3f);
+        }
+
+        //per quando incrocerà la palla/animale che rotola
+        if(other.CompareTag("gatto")){
+            if(carRigidbody.Velocity.magnitude!=0)
+                AddReward(-1f);//se non si ferma finisce l'episodio
+            else if(){
+                carRigidbody.velocity.magnitude ==0;//lo facciamo fermare come nella realtà se vede una palla/gatto camminare
+                AddReward(1f); 
+            }   
+            Riparto();
         }
 
         if(other.CommpareTag("stopLine")){
