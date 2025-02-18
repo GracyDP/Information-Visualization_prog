@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Unity.MLAgents;
 using Unity.MLAgents.Actuators;
 using Unity.MLAgents.Sensors;
@@ -8,12 +8,14 @@ using System.Collections;
 using System.Collections.Generic;
 public class carAgent : Agent
 {
-    public float speed = 10f;
+    public float speed = 5f;
     public Rigidbody carRigidbody;
     public Transform parcheggio;
     private List<Vector3> premiPosizioni = new List<Vector3>();
     private List<GameObject> premiList = new List<GameObject>();
+    GameObject svolta;
     private float finalReword = 0;
+    private bool passanteVisibile = false;
 
     private void Start()
     {
@@ -21,7 +23,7 @@ public class carAgent : Agent
         carRigidbody = GetComponent<Rigidbody>();
         // Trova tutti gli oggetti con il tag "premio" e salva le loro posizioni
         GameObject[] premi = GameObject.FindGameObjectsWithTag("premio");
-
+        svolta = GameObject.FindGameObjectWithTag("Svolta");
         foreach (GameObject premio in premi)
         {
             premiList.Add(premio);
@@ -29,6 +31,26 @@ public class carAgent : Agent
         }
 
         //Debug.Log($"Premi salvati: {premiList.Count}");
+    }
+
+    private void Update()
+    {
+        if (Vector3.Dot(transform.up, Vector3.up) < 0.3f) // Controlla se l'auto è capovolta
+        {
+            Debug.Log("Macchina ribaltata! Episodio terminato.");
+            //addRewordWrapped(-30f); // Penalità per il ribaltamento
+            terminaConRewardFinale();
+        }
+
+
+        // Controlla se vede il passante
+        passanteVisibile = VedePassante();
+
+        if (passanteVisibile)
+        {
+            carRigidbody.velocity = Vector3.zero;  // Ferma la macchina
+            Debug.Log("Passante rilevato! L'auto si ferma.");
+        }
     }
 
     public override void OnEpisodeBegin()
@@ -40,6 +62,7 @@ public class carAgent : Agent
         transform.SetPositionAndRotation(spawnPosition, spawnRotation);
         finalReword = 0;
         RespawnAllPremi();
+
     }
 
     public override void CollectObservations(VectorSensor sensor)
@@ -52,12 +75,22 @@ public class carAgent : Agent
 
     public override void OnActionReceived(ActionBuffers actions)
     {
+
+        if (passanteVisibile)
+        {
+
+            carRigidbody.velocity = Vector3.zero;
+            Debug.Log("L'auto si ferma per il passante.");
+            return; // Esce senza eseguire il movimento
+        }
         float forwardAmount = actions.ContinuousActions[0];
         float turnAmount = actions.ContinuousActions[1];
 
-        Vector3 move = transform.forward * forwardAmount * speed * Time.deltaTime;
-        carRigidbody.MovePosition(transform.position + move);
-        transform.Rotate(0, turnAmount * 100f * Time.deltaTime, 0);
+        // Applica forza progressiva per accelerare
+        Vector3 force = transform.forward * forwardAmount * speed;
+        carRigidbody.AddForce(force, ForceMode.Acceleration);
+        // Debug.Log(carRigidbody.velocity.magnitude);
+        transform.Rotate(0, turnAmount * 50f * Time.deltaTime, 0);
 
         /*if (StepCount >= 8000)
         {
@@ -76,7 +109,7 @@ public class carAgent : Agent
         }
         else if (forwardAmount < 0)
         {
-            addRewordWrapped(-0.05f);
+            addRewordWrapped(-0.1f);
         }
 
         if (Vector3.Distance(transform.position, parcheggio.position) < 2f && carRigidbody.velocity.magnitude < 0.1f)
@@ -91,7 +124,7 @@ public class carAgent : Agent
     {
         if (other.CompareTag("premio"))
         {
-            addRewordWrapped(15f);
+            addRewordWrapped(20f);
             other.gameObject.SetActive(false);
         }
         if (other.CompareTag("parcheggio"))
@@ -99,7 +132,7 @@ public class carAgent : Agent
             Debug.Log("Entrato nel parcheggio!");
             if (carRigidbody.velocity.magnitude < 0.1f)
             {
-                addRewordWrapped(50f);
+                addRewordWrapped(100f);
                 Debug.Log("Parcheggio riuscito!");
                 terminaConRewardFinale();
             }
@@ -108,20 +141,42 @@ public class carAgent : Agent
         if (other.CompareTag("rewardErrore"))
         {
             Debug.Log("Reward negativo!");
-            addRewordWrapped(-10f);
+            addRewordWrapped(-30f);
             terminaConRewardFinale();
+        }
+        if (other.CompareTag("Svolta"))
+        {
+            Vector3 curvaDirezione = other.transform.forward;  // Direzione della curva
+            other.gameObject.SetActive(false);
+            float angolo = Vector3.Angle(transform.forward, curvaDirezione);
+
+            if (angolo < 30f)  // Se l’angolo è inferiore a 30°, la svolta è buona
+            {
+                AddReward(10f);
+                Debug.Log("Curva presa bene!");
+            }
+            else
+            {
+                AddReward(-5f);  // Penalità se l'angolo è sbagliato
+                Debug.Log("Curva presa male!");
+            }
+        }
+        else if (other.CompareTag("swap"))
+        {
+            Debug.Log("Attivato swap dei tag!");
+            SwapTags();
         }
     }
 
     private void terminaConRewardFinale()
     {
         // Incentivo progressivo per avvicinarsi al parcheggio
-        float distanza = Vector3.Distance(transform.position, parcheggio.position);
+        /*float distanza = Vector3.Distance(transform.position, parcheggio.position);
         //Debug.Log("Distanza:" + distanza);
-        float reward = Mathf.Clamp(59f - (distanza), -60f, 60f);
+        float reward = Mathf.Clamp(59f - (distanza), -60f, 60f)*0.5f;
         Debug.Log("Reward per distanza dal parcheggio:" + reward);
         addRewordWrapped(reward);
-        Debug.Log("Final reword:" + finalReword);
+        Debug.Log("Final reword:" + finalReword);*/
         EndEpisode();
 
     }
@@ -145,7 +200,7 @@ public class carAgent : Agent
     {
         if (collision.gameObject.CompareTag("muro"))
         {
-            addRewordWrapped(-20f);
+            addRewordWrapped(-50f);
             terminaConRewardFinale();
         }
     }
@@ -171,6 +226,43 @@ public class carAgent : Agent
 
                 //Debug.Log($"Premio {premiList[i].name} riposizionato a: {premiPosizioni[i]}");
             }
+        }
+        svolta.SetActive(true);
+    }
+    // Metodo per verificare se il passante è davanti all'agente
+    private bool VedePassante()
+    {
+        RaycastHit hit;
+        Vector3 avanti = transform.forward;
+
+        // Raycast davanti alla macchina per vedere se c'è il passante
+        if (Physics.Raycast(transform.position, avanti, out hit, 4f))
+        {
+            //Debug.Log($"Oggetto rilevato: {hit.collider.gameObject.name} con tag {hit.collider.tag}");
+            if (hit.collider.CompareTag("passante"))
+            {
+                //  Debug.Log("Passante visto! L'auto si ferma.");
+                return true;
+            }
+        }
+        // Debug.Log("Nessun passante in vista, l'auto può continuare.");
+        return false;
+    }
+
+    private void SwapTags()
+    {
+        // Trova tutti gli oggetti con il tag "premio" e cambia il loro tag in "rewardErrore"
+        GameObject[] premi = GameObject.FindGameObjectsWithTag("premio");
+        foreach (GameObject premio in premi)
+        {
+            premio.tag = "rewardErrore";
+        }
+
+        // Trova tutti gli oggetti con il tag "rewardErrore" e cambia il loro tag in "premio"
+        GameObject[] rewardErrori = GameObject.FindGameObjectsWithTag("rewardErrore");
+        foreach (GameObject rewardErrore in rewardErrori)
+        {
+            rewardErrore.tag = "premio";
         }
     }
 }
