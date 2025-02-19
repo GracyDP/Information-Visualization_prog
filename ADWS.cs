@@ -1,8 +1,11 @@
 using UnityEngine;
 
-public class ControlloMacchina : MonoBehaviour
+public class ADWS : MonoBehaviour
 {
     //per lo stop
+    public GameObject stop;
+    public GameObject redLight;
+    public GameObject greenLight;
 
     // WheelCollider delle ruote
     public WheelCollider ruotaAnterioreSinistra;
@@ -17,7 +20,7 @@ public class ControlloMacchina : MonoBehaviour
     public Transform trasformRuotaPosterioreDestra;
 
     // Forza motrice e angolo di sterzata
-    public float forzaMotore = 1000f;/*ricorda che ho impostato a 1500 la massa quindi ci vuole forza per farla camminare NON MODIFICARE */
+    public float forzaMotore = 1000f;/* da modificare in base alla massa che mettiamo */
     public float angoloSterzata = 30f;
     public float time=5f;
     void FixedUpdate()
@@ -52,6 +55,25 @@ public class ControlloMacchina : MonoBehaviour
         trasform.position = posizione;
         trasform.rotation = rotazione;
     }
+
+    void fermaMacchina(){
+        forzaMotore=0f;
+    }
+
+    void partiMacchina(){
+        forzaMotore=1000f;
+    }
+
+    void OnCollisionEnter(Collision coll){
+        if(coll.GameObject.compareTag("stopLine")){
+            fermaMacchina();
+        }
+        //controllo fatto fuori
+        if(greenLight.SetActive(true)){
+            partiMacchina();
+        }
+    }
+
 
 }
 
