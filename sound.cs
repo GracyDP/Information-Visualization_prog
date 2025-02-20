@@ -1,19 +1,42 @@
 using UnityEngine;
 
-//script per impostare il suono della scena
-
 public class StopMusicTrigger : MonoBehaviour
 {
-    public AudioSource musicSource; // oggetto empty
+    public AudioSource ambiente; // Riferimento alla musica di ambiente
+    public AudioSource frenata; // Riferimento al suono di frenata
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("traguardo")) //se la macchina parcheggia la musica si ferma
+        // Se il player raggiunge il traguardo, ferma la musica
+        if (other.CompareTag("traguardo"))
         {
-            if (musicSource.isPlaying)
+            if (ambiente.isPlaying)
             {
-                musicSource.Stop(); // Ferma la musica
+                ambiente.Stop();
             }
+        }
+
+        // Se il player passa sulla stopLine, ferma la musica e inizia la frenata
+        if (other.CompareTag("stopLine"))
+        {
+            if (ambiente.isPlaying)
+            {
+                ambiente.Stop(); // Ferma la musica
+                frenata.Play();  // Suona il suono di frenata
+            }
+
+            StartCoroutine(ResumeMusicAfterDelay()); // Avvia la coroutine per riprendere la musica dopo un ritardo
+        }
+    }
+
+    private IEnumerator ResumeMusicAfterDelay()
+    {
+        //aggiustiamo i secondi se non risulta parallelo alla partenza
+        yield return new WaitForSeconds(4f); //dopo lo stop aspetta e poi quando riparte la macchina riparte la musica
+
+        if (!ambiente.isPlaying) // Se la musica è ferma, riprende
+        {
+            ambiente.Play();
         }
     }
 }
