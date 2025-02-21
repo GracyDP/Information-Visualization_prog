@@ -134,9 +134,11 @@ public class carAgent : Agent
         if(other.CompareTag("gatto")){
             if(carRigidbody.Velocity.magnitude!=0)
                 AddReward(-1f);//se non si ferma finisce l'episodio
-            else if(){
-                carRigidbody.velocity.magnitude ==0;//lo facciamo fermare come nella realtà se vede una palla/gatto camminare
-                AddReward(1f); 
+                Debug.Log("Oh no! non potevo investire un gatto\n");
+            else {
+                    carRigidbody.velocity.magnitude ==0;
+                    WaitforRestart();
+                    AddReward(1f); 
             }   
             Riparto();
         }
@@ -153,6 +155,20 @@ public class carAgent : Agent
                 }
             if(other.ComparTag("Car"))
                 Riparto();
+        }
+
+
+        //Gestione Luci semaforo
+
+        if(other.CompareTag("RedLight")){
+            if(carRigidbody.velocity.magnitude!=0){
+                Debug.Log("ho attraversato con il semaforo rosso\n");
+                AddReward(-1f);
+            }else if(other.CompareTag("YellowLight")){
+                    if(carRigidbody.velocity.magnitude>speed)AddReward(0.5f);
+                    else AddReward(-0.5f);
+                    Debug.Log("sto accellerando per non passare con il rosso\n");
+            }else AddReward(1f);
         }
     
     }
