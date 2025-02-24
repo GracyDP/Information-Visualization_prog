@@ -156,8 +156,7 @@ public class carAgent : Agent
             if(other.ComparTag("Car"))
                 Riparto();
         }
-
-
+        
         //Gestione Luci semaforo
 
         if(other.CompareTag("RedLight")){

@@ -27,6 +27,18 @@ public class StopMusicTrigger : MonoBehaviour
 
             StartCoroutine(ResumeMusicAfterDelay()); // Avvia la coroutine per riprendere la musica dopo un ritardo
         }
+
+
+         if (other.CompareTag("gatto"))
+        {
+            if (ambiente.isPlaying)
+            {
+                ambiente.Stop(); // Ferma la musica
+                frenata.Play();  // Suona il suono di frenata
+            }
+            //parte il miagolio dal suo script
+            StartCoroutine(ResumeMusicAfterDelay()); // Avvia la coroutine per riprendere la musica dopo un ritardo
+        }
     }
 
     private IEnumerator ResumeMusicAfterDelay()
