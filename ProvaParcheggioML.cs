@@ -13,6 +13,7 @@ public class carAgent : Agent
     public float speed = 5f;
     public Rigidbody carRigidbody;
     public Transform parcheggio;
+    public Transform frontSensor;  // Posizione del sensore frontale
     private List<Vector3> premiPosizioni = new List<Vector3>();
     private List<GameObject> premiList = new List<GameObject>();
     private List<Vector3> ingressoPosizione = new List<Vector3>();
@@ -83,9 +84,10 @@ public class carAgent : Agent
             carRigidbody.velocity = Vector3.zero;  // Ferma la macchina
             Debug.Log("Passante rilevato! L'auto si ferma.");
         }
+    }
 
 
-        float distanzaIngresso = ingressoList.Min(i => Vector3.Distance(transform.position, i.transform.position));
+        /*float distanzaIngresso = ingressoList.Min(i => Vector3.Distance(transform.position, i.transform.position));
 
         if (distanzaIngresso < 6f)
         {
@@ -101,9 +103,9 @@ public class carAgent : Agent
                 addRewordWrapped(2f - (distanzaIngresso * 0.15f));
             }
             //Debug.Log("sono vicina");
-        }
+        }*/
 
-        if (ingressoPrioritario && distanzaIngresso >= 6f)
+        /*if (ingressoPrioritario && distanzaIngresso >= 6f)
         {
             addRewordWrapped(-5f);
           //  Debug.Log("Mi allontano");// Penalità se si allontana dopo essersi avvicinato
@@ -111,7 +113,7 @@ public class carAgent : Agent
 
         //Debug.Log($"Distanza dall'ingresso più vicino: {distanzaIngresso}");
     }
-
+        */
     public override void OnEpisodeBegin()
     {
         carRigidbody.velocity = Vector3.zero;
@@ -182,10 +184,6 @@ public class carAgent : Agent
                 addRewordWrapped(-150f);
                 terminaConRewardFinale();
             }
-            Debug.Log($"Step massimo raggiunto: {StepCount}. Episodio terminato.");
-            addRewordWrapped(-100f);
-            terminaConRewardFinale();
-
         }
 
         // Penalità costante per evitare il reward hacking e incentivare la velocità
@@ -201,7 +199,7 @@ public class carAgent : Agent
             addRewordWrapped(-0.1f);
         }
 
-
+        CheckForEntrance();
         // Calcola la distanza dall'ingresso più vicino
         /* float minDistanzaIngresso = float.MaxValue;
 
@@ -306,7 +304,21 @@ public class carAgent : Agent
             SwapTags();
         }
 
-        
+        if (other.CompareTag("muro"))
+        {
+            if (premiRaccolti >= premiMassimi)
+            {
+                addRewordWrapped(-150f);
+                terminaConRewardFinale();
+            }
+            else
+            {
+                addRewordWrapped(-100f);
+                terminaConRewardFinale();
+            }
+        }
+
+
     }
 
     private void terminaConRewardFinale ()
@@ -334,19 +346,6 @@ public class carAgent : Agent
 
     public void OnCollisionEnter(Collision collision)
     {
-        if (collision.gameObject.CompareTag("muro"))
-        {
-            if (premiRaccolti >= premiMassimi)
-            {
-                addRewordWrapped(-50f);
-                terminaConRewardFinale();
-            }
-            else
-            {
-                addRewordWrapped(-30f);
-                terminaConRewardFinale();
-            }
-        }
         if (collision.gameObject.CompareTag("car"))
         {
             addRewordWrapped(-100f);
@@ -438,8 +437,39 @@ public class carAgent : Agent
         }
     }
 
-   
 
+    private void CheckForEntrance()
+    {
+        float angle = 15f; // Angolo per i raggi laterali
+
+        // Direzioni dei raggi
+        Vector3 forward = transform.forward;
+        Vector3 right = Quaternion.Euler(0, angle, 0) * forward; // Raggio destro
+        Vector3 left = Quaternion.Euler(0, -angle, 0) * forward; // Raggio sinistro
+
+        // Controlla con tre raggi
+        if (CheckRay(forward) || CheckRay(right) || CheckRay(left))
+        {
+            Debug.Log("Ingresso rilevato!");
+        }
+    }
+
+    private bool CheckRay(Vector3 direction)
+    {
+        RaycastHit hit;
+        if (Physics.Raycast(frontSensor.position, direction, out hit, 6f))
+        {
+            if (hit.collider.CompareTag("ingresso"))
+            {
+                float distance = hit.distance;
+                float reward = Mathf.Lerp(1.0f, 0.1f, distance / 6f);
+                AddReward(reward);
+                Debug.DrawRay(frontSensor.position, direction * distance, Color.green, 0.5f);
+                return true;
+            }
+        }
+        return false;
+    }
 
 
 
