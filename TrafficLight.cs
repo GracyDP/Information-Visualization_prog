@@ -11,7 +11,7 @@ public class TrafficLight : MonoBehaviour
     private void OnTriggerEnter(Collider other)
     {
         // Controlla se è una macchina che entra nel parcheggio
-        if (other.CompareTag("Car"))
+        if (other.CompareTag("car"))
         {
             numeroMacchine++;
             ControllaSemaforo();
@@ -21,7 +21,7 @@ public class TrafficLight : MonoBehaviour
     private void OnTriggerExit(Collider other)
     {
         // Controlla se è una macchina che esce dal parcheggio
-        if (other.CompareTag("Car"))
+        if (other.CompareTag("car"))
         {
             numeroMacchine--;
             ControllaSemaforo();
