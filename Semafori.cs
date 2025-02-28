@@ -8,8 +8,8 @@ public class Semafori : MonoBehaviour
     public Light yellowLight;
     public Light greenLight;
 
-    public float greenTime = 8f; 
-    public float yellowTime = 2f;
+    public float greenTime = 10f; 
+    public float yellowTime = 5f;
     public float redTime = 5f;
 
     private void Start()
