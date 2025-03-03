@@ -161,6 +161,9 @@ public class carAgent : Agent
             Debug.Log("L'auto si ferma per il passante.");
             return; // Esce senza eseguire il movimento
         }
+
+
+
         float forwardAmount = actions.ContinuousActions[0];
         float turnAmount = actions.ContinuousActions[1];
 
@@ -170,7 +173,7 @@ public class carAgent : Agent
        // Debug.Log(carRigidbody.velocity.magnitude);
         transform.Rotate(0, turnAmount * 50f * Time.deltaTime, 0);
 
-        if (StepCount >= 5000)
+        /*if (StepCount >= 5000)
         {
             if (premiRaccolti < premiMassimi)
             {
@@ -184,7 +187,7 @@ public class carAgent : Agent
                 addRewordWrapped(-150f);
                 terminaConRewardFinale();
             }
-        }
+        }*/
 
         // Penalità costante per evitare il reward hacking e incentivare la velocità
         addRewordWrapped(-0.001f);
@@ -308,12 +311,12 @@ public class carAgent : Agent
         {
             if (premiRaccolti >= premiMassimi)
             {
-                addRewordWrapped(-150f);
+                addRewordWrapped(-100f);
                 terminaConRewardFinale();
             }
             else
             {
-                addRewordWrapped(-100f);
+                addRewordWrapped(-50f);
                 terminaConRewardFinale();
             }
         }
@@ -463,7 +466,7 @@ public class carAgent : Agent
             {
                 float distance = hit.distance;
                 float reward = Mathf.Lerp(1.0f, 0.1f, distance / 6f);
-                AddReward(reward);
+                addRewordWrapped(reward);
                 Debug.DrawRay(frontSensor.position, direction * distance, Color.green, 0.5f);
                 return true;
             }
