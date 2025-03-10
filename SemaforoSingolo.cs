@@ -20,14 +20,17 @@ public class SemaforoSingolo : MonoBehaviour {
         while (true) {
             stato = StatoSemaforo.Rosso;
             luce.color = Color.red;  // Usare direttamente Color.red
+            luce.tag = "redLight";
             yield return new WaitForSeconds(tempoRosso);
             
             stato = StatoSemaforo.Giallo;
             luce.color = Color.yellow;  // Usare direttamente Color.yellow
+            luce.tag = "yellowLight";
             yield return new WaitForSeconds(tempoGiallo);
 
             stato = StatoSemaforo.Verde;
             luce.color = Color.green;  // Usare direttamente Color.green
+            luce.tag = "greenLight";
             yield return new WaitForSeconds(tempoVerde);
         }
     }
