@@ -3,7 +3,8 @@ using Unity.MLAgents.Actuators;
 using Unity.MLAgents.Sensors;
 using UnityEngine;
 using UnityEngine.UIElements;
-using UnityEngine.Random.Range;
+using System.Collections;
+using System.Collections.Generic;
 using Unity.VisualScripting;
 using System.Linq;
 
@@ -12,7 +13,7 @@ public class carAgent : Agent
 
     //private int count = Random.Next(0, 2);//per far spostare l'addestramento
     public Transform parcheggio;
-    public Light segnaleStop;
+    private Vector3 pausa;
 
     //vettori WayPoint
     private List<Vector3> premiPosizioni = new List<Vector3>();
@@ -22,16 +23,24 @@ public class carAgent : Agent
     private List<Vector3> errorePosizione = new List<Vector3>();
     private List<GameObject> erroreList = new List<GameObject>();
 
+    public Transform frontSensor;
+
+
+    private float collisionTime = 0f;  // Tempo trascorso in collisione
+    private bool isInCollision = false;  // Verifica se è in collisione
+
+    private bool ferma=false;
+
 
     private int premiRaccolti;
     private int premiMassimi=10;
-    private float premio;
 
 
     private GameObject svolta;
     private float finalReword = 0;
+    private float premio;
 
-    public float speed = 5f;
+    public float speed = 10f;
     public Rigidbody carRigidbody;
 
     //Incrocio
@@ -40,33 +49,8 @@ public class carAgent : Agent
     private GameObject currentSwap; // Riferimento all'oggetto swap attuale
     private bool ingressoPrioritario = false; // Quando diventa true, evita i premi
 
-    private void Update(){
 
-        float distanzaIngresso = ingressoList.Min(i => Vector3.Distance(transform.position, i.transform.position));
-
-        if (distanzaIngresso < 6f)
-        {
-            ingressoPrioritario = true; // Attiva la priorità agli ingressi
-
-
-            if (distanzaIngresso > 2f && StepCount>3000)
-            {
-                addRewordWrapped(-0.05f);
-            }
-            else
-            {
-                addRewordWrapped(2f - (distanzaIngresso * 0.15f));
-            }
-        }
-
-    if (ingressoPrioritario && distanzaIngresso >= 6f)
-        {
-            addRewordWrapped(-5f);
-        }
-    }
-
-
-    private void Start()
+     private void Start()
     {
         Application.targetFrameRate = 60;
         carRigidbody = GetComponent<Rigidbody>();
@@ -101,14 +85,28 @@ public class carAgent : Agent
 
     }
 
+    private float altezza;
+
+   private void Update(){
+    
+    if( Vector3.Dot(transform.up, Vector3.up) < 0.3f){
+        Debug.Log("non voiglio accappottarmiìiiiii");
+        AddReward(-30f);
+        EndEpisode();
+    }
+
+   }
+
+
+
     public override void OnEpisodeBegin()
     {
         // Resetta la posizione e la velocità della macchina
         carRigidbody.velocity = Vector3.zero;
         carRigidbody.angularVelocity = Vector3.zero;
         
-        Vector3 spawnPosition= new Vector3(9.68f, -32.3f, -44.45f);
-        Quaternion spawnRotation= new Quaternion.Euler(0, 0, 0);
+        Vector3 spawnPosition= new Vector3(22.99f, -19.07f, 29.93f);
+        Quaternion spawnRotation= Quaternion.Euler(0, 180, 0);
 
         // Imposta la posizione e rotazione della macchina
         transform.SetPositionAndRotation(spawnPosition, spawnRotation);
@@ -122,6 +120,12 @@ public class carAgent : Agent
             obj.Key.tag = obj.Value;
         }
         RespawnAllPremi();
+    }
+
+        private void addRewordWrapped (float value)
+    {
+        finalReword += value;
+        AddReward(value);
     }
 
     public override void CollectObservations(VectorSensor sensor)
@@ -141,23 +145,22 @@ public class carAgent : Agent
             sensor.AddObservation(distanzaIngresso.normalized);
             sensor.AddObservation(distanzaIngresso.magnitude);
         }
-        // Il Ray Perception Sensor 3D aggiunger� automaticamente le osservazioni dei raggi
+        // Il Ray Perception Sensor 3D aggiungemautomaticamente le osservazioni dei raggi
     }
+
 
     public override void OnActionReceived(ActionBuffers actions)
     {
-        //Debug.Log($"Azioni ricevute: {actions.ContinuousActions.Length}");
         float forwardAmount = actions.ContinuousActions[0];  // Azione per andare avanti/indietro
         float turnAmount = actions.ContinuousActions[1];     // Azione per girare a destra/sinistra
 
-        // Movimento della macchina
-        Vector3 move = transform.forward * forwardAmount * speed * Time.deltaTime;
-        carRigidbody.MovePosition(transform.position + move);
+        // Applica forza progressiva per accelerare
+        Vector3 force = transform.forward * forwardAmount * speed;
+        carRigidbody.AddForce(force, ForceMode.Acceleration);
+        transform.Rotate(0, turnAmount * 50f * Time.deltaTime, 0);
 
-        // Rotazione della macchina
-        transform.Rotate(0, turnAmount * 100f * Time.deltaTime, 0);
 
-       if (StepCount >= 5000)
+       /*if (StepCount >= 5000)
         {
             if (premiRaccolti < premiMassimi)
             {
@@ -174,7 +177,7 @@ public class carAgent : Agent
             Debug.Log($"Step massimo raggiunto: {StepCount}. Episodio terminato.");
             addRewordWrapped(-100f);
             terminaConRewardFinale();
-        }
+        }*/
 
         // Penalità costante per evitare il reward hacking e incentivare la velocità
         addRewordWrapped(-0.001f);
@@ -182,25 +185,29 @@ public class carAgent : Agent
         // Reward positivo per andare avanti
         if (forwardAmount > 0)
         {
-            AddRewardWrapped(0.05f);
+            addRewordWrapped(0.5f);
         }
         // Penalità per andare indietro
         else if (forwardAmount < 0)
         {
-            AddReward(-0.3f);
+            AddReward(-1f);
         }
+
+        CheckForEntrance();
     }
 
 
+    private void StopLuce(Light segnaleStop)
+    {
+        // Accende la luce specificata e spegne l'altra
+        segnaleStop.enabled = true;
+    }  
+
     //funzione per penalizzarlo/premiarlo e gestire i rallentamenti/linea STOP
-    private void Riparto(){
-        if(speed>=8 && speed <=10){
-            Debug.Log("Sto ripartendo a velocità: "+ speed+"\n");
-            AddReward(1f);
-        }    
-        if(speed<=0){
-            AddReward(-1f);
-            EndEpisode();
+    private void Riparto(){  
+        if(carRigidbody.velocity.magnitude>0){
+            AddReward(80f);
+            Debug.Log("sto ripartendo");
         }
     }
 
@@ -208,49 +215,51 @@ public class carAgent : Agent
     private IEnumerator WaitforRestart()
 {
     Debug.Log("Aspetto 5 secondi...");
-    yield return new WaitForSeconds(5f); // Aspetta 2 secondi
-    EndEpisode();
+    yield return new WaitForSeconds(20f); // Aspetta 5 secondi
+    AddReward(50f);
     //Per ora aspetta la faccio ripartire poi togliamo l'end dopo che avrà imparato
 }
 
 
     private void OnCollisionEnter(Collision collision){
-        if(collision.CompareTag("car")){
-            addRewordWrapped(-100f);
+        if(collision.gameObject.CompareTag("car")){
+            addRewordWrapped(-300f);
             terminaConRewardFinale();
         }    
     }
+    
+    
 
     private void OnTriggerEnter(Collider other)
     {
         // Reward positivo per aver toccato l'oggetto con tag "Reward"
         if (other.CompareTag("premio"))
         {
-            AddReward(1f);
-            EndEpisode();  // Fine episodio dopo aver toccato l'oggetto
+            AddReward(4f);
+            other.gameObject.SetActive(false);
+            //Debug.Log("sto andando FORTE");
         }
         // Penalità per aver toccato un muro
         else if (other.CompareTag("muro"))
         {
             if (premiRaccolti >= premiMassimi)
             {
-                addRewordWrapped(-50f);
+                addRewordWrapped(-100f);
                 terminaConRewardFinale();
             }
             else
             {
-                addRewordWrapped(-30f);
+                addRewordWrapped(-150f);
                 terminaConRewardFinale();
             }
         }
 
         //se prende il cubo prima dello stop
-        if(other.CompareTag("rallenta")){
-            if(carRigidbody.velocity.magnitude < speed){ //controllo se la macchina rallenta
-                AddReward(1f);
-                Debug.Log("sto rallentando\n");
-            }    
-            else AddReward(-0.3f);
+
+        if(other.CompareTag("redLight")){
+            Debug.Log("ho captato la luce rossa");
+
+
         }
 
 //premio per aver raggionto il parcheggio
@@ -259,44 +268,26 @@ public class carAgent : Agent
             Debug.Log("Entrato nel parcheggio!");
             addRewordWrapped(300f);
             Debug.Log("Parcheggio riuscito!");
+            //WaitForSeconds();
             terminaConRewardFinale();
             
         }
 
 //per quando incrocerà il gatto
-        if(other.CompareTag("gatto")){
-            if(carRigidbody.Velocity.magnitude!=0)
-                AddReward(-1f);//se non si ferma finisce l'episodio
+        if(other.CompareTag("passante")){
+            if(carRigidbody.velocity.magnitude==0){
+                WaitforRestart();
+                AddReward(50f);
+
+            } else{
+                AddReward(-150f);//se non si ferma finisce l'episodio
                 Debug.Log("Oh no! non potevo investire un gatto\n");
-            else {
-                    carRigidbody.velocity.magnitude ==0;
-                    WaitforRestart();
-                    AddReward(1f); 
-            }   
-            Riparto();
+                EndEpisode();
+            }
         }
-//*************************************************************************************************************
 
-    private void StopLuce(Light segnaleStop)
-    {
-        // Accende la luce specificata e spegne l'altra
-        segnaleStop.enabled = true;
-    }    
+//*************************************************************************************************************  
 
-//prova con spotLight al semaforo
-       if(other.CommpareTag("stopLine")){
-            if(carRigidbody.velocity.magnitude == 0f){
-                Debug.Log("mi sono fermato\n");
-                AddReward(1f);
-                StarCouroutine(WaitforRestart())//aspetta prima di ripartire
-                //aggiungere funzione wait
-                }else {
-                    AddReward(-1f);
-                    EndEpisode();
-                }
-            if(other.ComparTag("Car"))
-                Riparto();
-        }
 
         if (other.CompareTag("rewardErrore"))
         {
@@ -322,6 +313,9 @@ public class carAgent : Agent
                 terminaConRewardFinale();
             }
         }
+
+
+
 
 //Gestione "assistita" della curva        
         if (other.CompareTag("Svolta"))
@@ -360,20 +354,164 @@ public class carAgent : Agent
         
         //Gestione Luci semaforo
 
-        if(other.CompareTag("RedLight")){
+        if(other.CompareTag("redLight")){
             if(carRigidbody.velocity.magnitude!=0){
                 Debug.Log("ho attraversato con il semaforo rosso\n");
-                AddReward(-1f);}}
-        if(other.CompareTag("YellowLight")){
+                AddReward(-10f);
+            }
+        }
+        if(other.CompareTag("yellowLight")){
                     if(carRigidbody.velocity.magnitude<speed)AddReward(0.5f);
                     else AddReward(-0.5f);
                     Debug.Log("sto accellerando per non passare con il rosso\n");
         }    
-        if(other.CompareTag("GreenLight")){
+        if(other.CompareTag("greenLight")){
             AddReward(1f);
             Debug.Log("Ho attraversato con il VERDE");
             }
-    } 
+
+
+        if(other.CompareTag("car")){
+            addRewordWrapped(-150f);
+            EndEpisode();
+        }
+
+
+
+
+        if(other.CompareTag("stopLine")){
+            WaitforRestart();
+            if(carRigidbody.velocity.magnitude==0){
+                AddReward(50f);
+                Riparto();
+                other.gameObject.SetActive(false);
+                Debug.Log("oggetto disattivato");
+            }else {AddReward(-100f); 
+                    //EndEpisode();
+                    Debug.Log("NON MI SONO FERMATO");
+        }
+    }
+}
+//Gestione luce semafori
+/*
+RaycastHit hit;
+if (Physics.Raycast(transform.position, transform.forward, out hit, distanzaRaggio)) {
+    if (hit.collider.CompareTag("Semaforo")) {
+        SemaforoController semaforo = hit.collider.GetComponent<SemaforoController>();
+        if (semaforo.stato == StatoSemaforo.Rosso) {
+            StopCar();
+        }
+    }
+}
+*/
+
+
+//Gestione STOP
+private void CheckForStop()
+    {
+        float angle = 30f; // Angolo per i raggi laterali
+
+        // Direzioni dei raggi
+        Vector3 forward = transform.forward;
+        Vector3 right = Quaternion.Euler(0, angle, 0) * forward; // Raggio destro
+        Vector3 left = Quaternion.Euler(0, -angle, 0) * forward; // Raggio sinistro
+
+        // Controlla con tre raggi
+        if (CheckRay(forward) || CheckRay(right) || CheckRay(left))
+        {
+            Debug.Log("Ho preso lo stop");
+        }
+    }
+
+
+//Segnale di stop
+/*private void OnCollisionStay(Collision coll){
+    if(coll.gameObject.CompareTag("stopLine")){
+        Debug.Log("sono vicino lo stop");
+        if (!isInCollision)  // Se non è già in collisione, inizia il timer
+        {
+            isInCollision = true;
+            collisionTime = 0f;  // Inizia il conteggio
+        }
+
+        // Aggiungi ricompensa per ogni secondo che rimane in collisione
+        collisionTime += Time.deltaTime;
+
+        if (collisionTime >= 1f)  // Ogni secondo che passa
+        {
+            AddReward(10f);  // Aggiungi ricompensa
+            collisionTime = 0f;  // Reset del timer per il prossimo secondo
+        }
+
+        if (collisionTime >= 3f)  // Dopo 3 secondi
+        {
+            Debug.Log("3 secondi in collisione. Aggiunto ricompensa finale.");
+            isInCollision = false;  // Ferma la collisione
+            //coll.gameObject.SetActive(false);
+        }
+    }
+    else
+    {
+        // Se l'agente non è più in collisione, resetta il timer
+        isInCollision = false;
+        collisionTime = 0f;
+        if(carRigidbody.velocity.magnitude==0) AddReward(-80f);
+    }
+
+    if(isInCollision){
+        AddReward(-40f);
+        Debug.Log("sono passato senza fermarmi");
+        
+    }
+        
+}*/
+
+
+
+
+//PARCHEGGIO-GESTIONE
+private void CheckForEntrance()
+    {
+        float angle = 15f; // Angolo per i raggi laterali
+
+        // Direzioni dei raggi
+        Vector3 forward = transform.forward;
+        Vector3 right = Quaternion.Euler(0, angle, 0) * forward; // Raggio destro
+        Vector3 left = Quaternion.Euler(0, -angle, 0) * forward; // Raggio sinistro
+
+        // Controlla con tre raggi
+        if (CheckRay(forward) || CheckRay(right) || CheckRay(left))
+        {
+            Debug.Log("Ingresso rilevato!");
+        }
+    }
+
+    private bool CheckRay(Vector3 direction)
+    {
+        RaycastHit hit;
+        if (Physics.Raycast(frontSensor.position, direction, out hit, 6f))
+        {
+            if (hit.collider.CompareTag("ingresso"))
+            {
+                float distance = hit.distance;
+                float reward = Mathf.Lerp(1.0f, 0.1f, distance / 6f);
+                addRewordWrapped(reward);
+                Debug.DrawRay(frontSensor.position, direction * distance, Color.green, 0.5f);
+                return true;
+            }
+            if (hit.collider.CompareTag("stopSignal"))
+            {
+                float distance = hit.distance;
+                if(distance<=10f && distance>2){
+                    addRewordWrapped(20f);
+                    return true;}
+                    else addRewordWrapped(-30f);
+            }
+        }
+        return false;
+    }
+
+
 
      private void terminaConRewardFinale ()
     {
@@ -382,12 +520,6 @@ public class carAgent : Agent
         Debug.Log("Final reword:" + finalReword);
         EndEpisode();
 
-    }
-
-    private void addRewordWrapped (float value)
-    {
-        finalReword += value;
-        AddReward(value);
     }
 
     public override void Heuristic(in ActionBuffers actionsOut)
@@ -448,6 +580,5 @@ public class carAgent : Agent
         }
     }
 
+
 }
-
-
