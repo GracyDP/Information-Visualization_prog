@@ -25,6 +25,7 @@ public class CarAgent : Agent
         carRigidbody.velocity = Vector3.zero;
         carRigidbody.angularVelocity = Vector3.zero;
         transform.SetPositionAndRotation(new Vector3(-2.11f, -19.07f, 36.42f), Quaternion.Euler(0, 90, 0));
+        //boolean per evitare che progressivamente vengano tolti punti.
         fermatoAlSemaforo = false;
         fermatoAlloStop = false;
     }
@@ -47,12 +48,12 @@ public class CarAgent : Agent
     private IEnumerator WaitForStop()
     {
         yield return new WaitForSeconds(3f);
-        if (carRigidbody.velocity.magnitude < 0.1f && !fermatoAlloStop)
+        if (carRigidbody.velocity.magnitude < 0.1f && !fermatoAlloStop)////controllo se non l'ho già penalizzato
         {
             AddReward(50f);
             fermatoAlloStop = true;
             Debug.Log("STOP rispettato!");
-            StartCoroutine(GradualSpeedIncrease());
+            StartCoroutine(GradualSpeedIncrease());  //la velocità viene gradualmente ripristinata
         }
         else
         {
@@ -70,6 +71,7 @@ public class CarAgent : Agent
                 StartCoroutine(WaitForStop());
             }
         }
+                //gestione semafori
 
         if (other.CompareTag("redLight"))
         {
