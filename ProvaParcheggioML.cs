@@ -32,12 +32,23 @@ public class carAgent : Agent
     private Dictionary<GameObject, string> tagOriginali = new Dictionary<GameObject, string>();
     private GameObject currentSwap; // Riferimento all'oggetto swap attuale
     private bool ingressoPrioritario = false; // Quando diventa true, evita i premi
-
+    private int randomIndex;
+    public TrafficLight semaforo1;
+    public TrafficLight semaforo2;
+    public TrafficLight semaforo3;
 
     private void Start()
     {
         Application.targetFrameRate = 60;
         carRigidbody = GetComponent<Rigidbody>();
+        // Modifica il numero di posti disponibili per il primo parcheggio
+        semaforo1.SetCountParcheggio(5);
+        semaforo3.SetCountParcheggio(5);
+
+        // Modifica il numero di posti disponibili per il secondo parcheggio
+        semaforo2.SetCountParcheggio(10);
+
+
         // Trova tutti gli oggetti con il tag "premio" e salva le loro posizioni
         GameObject[] premi = GameObject.FindGameObjectsWithTag("premio");
         GameObject[] rewardErrori = GameObject.FindGameObjectsWithTag("rewardErrore");
@@ -133,17 +144,30 @@ public class carAgent : Agent
         Vector3[] spawnPositions = new Vector3[]
         {
         new Vector3(-8.62f, -19.4f, 36.42f), // Posizione 1
-        new Vector3(21.9f, -19.4f, 12.6f)    // Posizione 2
+        new Vector3(22.69f, -19.4f, 9.6f)    // Posizione 2
         };
 
         Quaternion[] spawnRotations = new Quaternion[]
         {
         Quaternion.Euler(0, 90f, 0), // Rotazione per posizione 1
-        Quaternion.Euler(0, -90f, 0)  // Rotazione per posizione 2
+        Quaternion.Euler(0, 180f, 0)  // Rotazione per posizione 2
         };
 
         // Seleziona casualmente una posizione
-        int randomIndex = UnityEngine.Random.Range(0, spawnPositions.Length);
+        randomIndex = UnityEngine.Random.Range(0, spawnPositions.Length);
+        setRandomInt(randomIndex);
+        if (randomIndex == 0)
+        {
+            semaforo1.SetCountParcheggio(7);
+            semaforo3.SetCountParcheggio(7);
+            semaforo2.SetCountParcheggio(10);
+        }
+        if (randomIndex == 1)
+        {
+            semaforo1.SetCountParcheggio(6);
+            semaforo3.SetCountParcheggio(6);
+            semaforo2.SetCountParcheggio(11);
+        }
         transform.SetPositionAndRotation(spawnPositions[randomIndex], spawnRotations[randomIndex]);
 
         finalReword = 0;
@@ -478,7 +502,7 @@ public class carAgent : Agent
 
     private void CheckForEntrance()
     {
-        float angle = 15f; // Angolo per i raggi laterali
+        float angle = 30f; // Angolo per i raggi laterali
 
         // Direzioni dei raggi
         Vector3 forward = transform.forward;
@@ -499,6 +523,7 @@ public class carAgent : Agent
         {
             if (hit.collider.CompareTag("ingresso"))
             {
+                ingressoPrioritario = true;
                 float distance = hit.distance;
                 float reward = Mathf.Lerp(1.0f, 0.1f, distance / 6f);
                 addRewordWrapped(reward);
@@ -507,6 +532,16 @@ public class carAgent : Agent
             }
         }
         return false;
+    }
+
+    public int getRandomInt()
+    {
+        return this.randomIndex;
+    }
+    
+    public void setRandomInt(int valore)
+    {
+        this.randomIndex = valore;
     }
 
 
